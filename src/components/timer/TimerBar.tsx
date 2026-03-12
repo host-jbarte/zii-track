@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Play, Square, Plus } from 'lucide-react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '../../api/client'
@@ -14,10 +14,18 @@ export default function TimerBar() {
   const [projectId, setProjectId] = useState('')
   const [clientId, setClientId] = useState('')
 
+  // Refs always hold the latest values — used by auto-save to avoid stale closures
+  const descRef = useRef(desc)
+  const projectIdRef = useRef(projectId)
+  const clientIdRef = useRef(clientId)
+  descRef.current = desc
+  projectIdRef.current = projectId
+  clientIdRef.current = clientId
+
   const { data: projects = [] } = useQuery({ queryKey: ['projects'], queryFn: api.projects.list })
   const { data: clients = [] } = useQuery({ queryKey: ['clients'], queryFn: api.clients.list })
 
-  // Sync form when a running entry exists
+  // Sync form when a running entry is loaded / switched
   useEffect(() => {
     if (runningEntry) {
       setDesc(runningEntry.description || '')
@@ -25,6 +33,21 @@ export default function TimerBar() {
       setClientId(runningEntry.client_id ? String(runningEntry.client_id) : '')
     }
   }, [runningEntry?.id])
+
+  // Debounced auto-save while timer is running — reads from refs so values are always fresh
+  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const scheduleSave = (runningId: number, startedAt: number) => {
+    if (saveTimer.current) clearTimeout(saveTimer.current)
+    saveTimer.current = setTimeout(() => {
+      api.entries.update(runningId, {
+        description: descRef.current,
+        project_id: projectIdRef.current ? Number(projectIdRef.current) : null,
+        client_id: clientIdRef.current ? Number(clientIdRef.current) : null,
+        started_at: startedAt,
+        stopped_at: null,
+      })
+    }, 600)
+  }
 
   const startMutation = useMutation({
     mutationFn: () => api.entries.start({
@@ -39,7 +62,17 @@ export default function TimerBar() {
   })
 
   const stopMutation = useMutation({
-    mutationFn: () => api.entries.stop(runningEntry!.id),
+    mutationFn: async () => {
+      // Always flush the latest form values before stopping — this is the core fix
+      await api.entries.update(runningEntry!.id, {
+        description: descRef.current,
+        project_id: projectIdRef.current ? Number(projectIdRef.current) : null,
+        client_id: clientIdRef.current ? Number(clientIdRef.current) : null,
+        started_at: runningEntry!.started_at,
+        stopped_at: null,
+      })
+      return api.entries.stop(runningEntry!.id)
+    },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['running'] })
       qc.invalidateQueries({ queryKey: ['entries'] })
@@ -77,7 +110,10 @@ export default function TimerBar() {
       <input
         type="text"
         value={desc}
-        onChange={e => setDesc(e.target.value)}
+        onChange={e => {
+          setDesc(e.target.value)
+          if (runningEntry) scheduleSave(runningEntry.id, runningEntry.started_at)
+        }}
         onKeyDown={e => e.key === 'Enter' && handleToggle()}
         placeholder="What are you working on?"
         className="flex-1 bg-transparent text-white text-sm placeholder-white/25 focus:outline-none min-w-0"
@@ -93,7 +129,10 @@ export default function TimerBar() {
         )}
         <select
           value={projectId}
-          onChange={e => setProjectId(e.target.value)}
+          onChange={e => {
+            setProjectId(e.target.value)
+            if (runningEntry) scheduleSave(runningEntry.id, runningEntry.started_at)
+          }}
           className="select-glass text-xs py-2 px-3 min-w-[120px]"
         >
           <option value="">No Project</option>
@@ -106,7 +145,10 @@ export default function TimerBar() {
       {/* Client selector */}
       <select
         value={clientId}
-        onChange={e => setClientId(e.target.value)}
+        onChange={e => {
+          setClientId(e.target.value)
+          if (runningEntry) scheduleSave(runningEntry.id, runningEntry.started_at)
+        }}
         className="select-glass text-xs py-2 px-3 min-w-[110px] flex-shrink-0"
       >
         <option value="">No Client</option>
@@ -144,7 +186,6 @@ export default function TimerBar() {
       {/* Manual entry */}
       <button
         onClick={() => {
-          // Dispatch custom event for TimerPage to open manual entry modal
           window.dispatchEvent(new CustomEvent('open-manual-entry'))
         }}
         title="Add manual entry"
