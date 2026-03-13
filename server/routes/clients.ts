@@ -6,12 +6,10 @@ const router = new Hono()
 router.get('/', (c) => {
   const rows = db.prepare(`
     SELECT c.*,
-           COUNT(DISTINCT p.id) as project_count,
-           COALESCE(SUM(CASE WHEN e.stopped_at IS NOT NULL THEN e.stopped_at - e.started_at ELSE 0 END), 0) as total_duration
+           (SELECT COUNT(*) FROM projects p WHERE p.client_id = c.id) as project_count,
+           (SELECT COALESCE(SUM(e.stopped_at - e.started_at), 0) FROM time_entries e WHERE e.client_id = c.id AND e.stopped_at IS NOT NULL) as total_duration
     FROM clients c
-    LEFT JOIN projects p ON c.id = p.client_id
-    LEFT JOIN time_entries e ON c.id = e.client_id
-    GROUP BY c.id ORDER BY c.name ASC
+    ORDER BY c.name ASC
   `).all()
   return c.json(rows)
 })

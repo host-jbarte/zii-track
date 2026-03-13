@@ -35,17 +35,17 @@ export default function ReportTable({ entries }: ReportTableProps) {
               <td className="py-3 pr-4 text-white/80 max-w-xs truncate">
                 {e.description || <span className="text-white/25 italic">No description</span>}
               </td>
-              <td className="py-3 pr-4">
+              <td className="py-3 pr-4 min-w-[120px]">
                 {e.client_name ? (
-                  <span className="tag text-[11px] text-white/50 border-white/10 bg-white/[0.05]">
+                  <span className="tag text-[11px] text-white/50 border-white/10 bg-white/[0.05] whitespace-nowrap">
                     {e.client_name}
                   </span>
                 ) : <span className="text-white/20">—</span>}
               </td>
-              <td className="py-3 pr-4">
+              <td className="py-3 pr-4 min-w-[120px]">
                 {e.project_name ? (
                   <span
-                    className="tag text-[11px]"
+                    className="tag text-[11px] whitespace-nowrap"
                     style={{
                       color: e.project_color,
                       borderColor: e.project_color + '40',

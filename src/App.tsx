@@ -5,8 +5,13 @@ import TimerPage from './pages/TimerPage'
 import ProjectsPage from './pages/ProjectsPage'
 import ClientsPage from './pages/ClientsPage'
 import ReportsPage from './pages/ReportsPage'
+import UsersPage from './pages/UsersPage'
+import ProfilePage from './pages/ProfilePage'
+import LoginPage from './pages/LoginPage'
+import { useAuth } from './context/AuthContext'
 
-export default function App() {
+function ProtectedApp() {
+  const { isManager } = useAuth()
   return (
     <div className="flex h-screen overflow-hidden">
       <Sidebar />
@@ -19,6 +24,9 @@ export default function App() {
               <Route path="/projects" element={<ProjectsPage />} />
               <Route path="/clients" element={<ClientsPage />} />
               <Route path="/reports" element={<ReportsPage />} />
+              {isManager && <Route path="/team" element={<UsersPage />} />}
+              <Route path="/profile" element={<ProfilePage />} />
+              <Route path="/login" element={<Navigate to="/" />} />
               <Route path="*" element={<Navigate to="/" />} />
             </Routes>
           </div>
@@ -26,4 +34,19 @@ export default function App() {
       </div>
     </div>
   )
+}
+
+export default function App() {
+  const { user } = useAuth()
+
+  if (!user) {
+    return (
+      <Routes>
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="*" element={<Navigate to="/login" />} />
+      </Routes>
+    )
+  }
+
+  return <ProtectedApp />
 }

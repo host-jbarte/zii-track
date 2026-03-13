@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Pencil, Trash2 } from 'lucide-react'
+import { Pencil, Trash2, Play } from 'lucide-react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '../../api/client'
 import { formatDurationShort, formatTime } from '../../utils/time'
@@ -16,6 +16,18 @@ export default function EntryRow({ entry }: EntryRowProps) {
   const deleteMutation = useMutation({
     mutationFn: () => api.entries.delete(entry.id),
     onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['entries'] })
+    },
+  })
+
+  const continueMutation = useMutation({
+    mutationFn: () => api.entries.start({
+      description: entry.description,
+      project_id: entry.project_id ?? null,
+      client_id: entry.client_id ?? null,
+    }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['running'] })
       qc.invalidateQueries({ queryKey: ['entries'] })
     },
   })
@@ -78,6 +90,14 @@ export default function EntryRow({ entry }: EntryRowProps) {
           className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
           onClick={e => e.stopPropagation()}
         >
+          <button
+            onClick={() => continueMutation.mutate()}
+            disabled={continueMutation.isPending}
+            title="Continue this entry"
+            className="w-7 h-7 flex items-center justify-center rounded-lg text-white/30 hover:text-emerald-400 hover:bg-emerald-500/10 transition-all"
+          >
+            <Play size={13} fill="currentColor" />
+          </button>
           <button
             onClick={() => setEditing(true)}
             className="w-7 h-7 flex items-center justify-center rounded-lg text-white/30 hover:text-white/70 hover:bg-white/[0.08] transition-all"

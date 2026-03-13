@@ -17,6 +17,7 @@ export default function EntryForm({ entry, onClose }: EntryFormProps) {
   const [desc, setDesc] = useState(entry?.description || '')
   const [projectId, setProjectId] = useState(entry?.project_id ? String(entry.project_id) : '')
   const [clientId, setClientId] = useState(entry?.client_id ? String(entry.client_id) : '')
+  const [billable, setBillable] = useState(entry ? entry.is_billable !== 0 : true)
   const [startedAt, setStartedAt] = useState(toLocalDatetimeInput(entry?.started_at || now - 3600000))
   const [stoppedAt, setStoppedAt] = useState(toLocalDatetimeInput(entry?.stopped_at || now))
 
@@ -45,6 +46,7 @@ export default function EntryForm({ entry, onClose }: EntryFormProps) {
       description: desc,
       project_id: projectId ? Number(projectId) : null,
       client_id: clientId ? Number(clientId) : null,
+      is_billable: billable ? 1 : 0,
       started_at: new Date(startedAt).getTime(),
       stopped_at: new Date(stoppedAt).getTime(),
     }
@@ -106,6 +108,21 @@ export default function EntryForm({ entry, onClose }: EntryFormProps) {
               required
             />
           </div>
+        </div>
+
+        <div>
+          <button
+            type="button"
+            onClick={() => setBillable(!billable)}
+            className={`flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium transition-all ${
+              billable
+                ? 'text-emerald-400 bg-emerald-500/15 border border-emerald-500/30'
+                : 'text-white/40 border border-white/[0.08] hover:border-white/[0.15]'
+            }`}
+          >
+            <span className="text-base leading-none">$</span>
+            {billable ? 'Billable' : 'Non-billable'}
+          </button>
         </div>
 
         <div className="flex gap-3 pt-2">
